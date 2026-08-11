@@ -14,26 +14,33 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.x'
 
-      - name: Restore
+      - name: Restore Packages
         run: dotnet restore eShopOnWeb.sln
 
-      - name: Build
+      - name: Build Solution
         run: dotnet build eShopOnWeb.sln --configuration Release --no-restore
 
-      - name: Publish
+      - name: Publish Application
         run: dotnet publish src/Web/Web.csproj -c Release -o publish --no-build
+
+      - name: Verify Publish Output
+        run: |
+          echo "Publishing files..."
+          dir publish
+          dir publish /s
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: .net-app
+          name: webapp-package
           path: publish
 
   deploy:
@@ -44,12 +51,18 @@ jobs:
       - name: Download Artifact
         uses: actions/download-artifact@v4
         with:
-          name: .net-app
+          name: webapp-package
           path: publish
+
+      - name: Verify Downloaded Files
+        run: |
+          echo "Downloaded files..."
+          dir publish
+          dir publish /s
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
-          app-name: 'webapp-advance'
+          app-name: webapp-advance
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: publish
+          package: ./publish
