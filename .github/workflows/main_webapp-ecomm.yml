@@ -12,24 +12,25 @@ on:
 jobs:
   build:
     runs-on: windows-latest
-    permissions:
-      contents: read #This is required for actions/checkout
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up .NET Core
+      - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.x'
 
-      - name: Build with dotnet
-        run: dotnet build eShopOnWeb.sln --configuration Release
+      - name: Restore
+        run: dotnet restore eShopOnWeb.sln
 
-      - name: dotnet publish
-        run: dotnet dotnet publish src/Web/Web.csproj -c Release -o publish
+      - name: Build
+        run: dotnet build eShopOnWeb.sln --configuration Release --no-restore
 
-      - name: Upload artifact for deployment job
+      - name: Publish
+        run: dotnet publish src/Web/Web.csproj -c Release -o publish --no-build
+
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: .net-app
@@ -38,18 +39,17 @@ jobs:
   deploy:
     runs-on: windows-latest
     needs: build
-    
+
     steps:
-      - name: Download artifact from build job
+      - name: Download Artifact
         uses: actions/download-artifact@v4
         with:
           name: .net-app
-      
+          path: publish
+
       - name: Deploy to Azure Web App
-        id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'webapp-advance'
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: .
-          
+          package: publish
