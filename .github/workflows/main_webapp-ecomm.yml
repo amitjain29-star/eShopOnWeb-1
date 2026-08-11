@@ -12,57 +12,44 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+    permissions:
+      contents: read #This is required for actions/checkout
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup .NET
+      - name: Set up .NET Core
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.x'
 
-      - name: Restore Packages
-        run: dotnet restore eShopOnWeb.sln
+      - name: Build with dotnet
+        run: dotnet build eShopOnWeb.sln --configuration Release
 
-      - name: Build Solution
-        run: dotnet build eShopOnWeb.sln --configuration Release --no-restore
+      - name: dotnet publish
+        run: dotnet dotnet publish src/Web/Web.csproj -c Release -o publish
 
-      - name: Publish Application
-        run: dotnet publish src/Web/Web.csproj -c Release -o publish --no-build
-
-      - name: Verify Publish Output
-        run: |
-          echo "Publishing files..."
-          dir publish
-          dir publish /s
-
-      - name: Upload Artifact
+      - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
-          name: webapp-package
+          name: .net-app
           path: publish
 
   deploy:
     runs-on: windows-latest
     needs: build
-
+    
     steps:
-      - name: Download Artifact
+      - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
-          name: webapp-package
-          path: publish
-
-      - name: Verify Downloaded Files
-        run: |
-          echo "Downloaded files..."
-          dir publish
-          dir publish /s
-
+          name: .net-app
+      
       - name: Deploy to Azure Web App
+        id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
-          app-name: webapp-advance
+          app-name: 'webapp-advance'
+          slot-name: 'Production'
+          package: .
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: ./publish
